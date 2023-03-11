@@ -1,13 +1,14 @@
+from graphviz import Digraph
 from collections import deque
 
 # Define el AFN
 #ejemplo a|b
 afn = {
-    0: {'eps': {1,3}},
+    0: {'ϵ': {1,3}},
     1: {'a': {2}},
-    2: {'eps': {5}},
+    2: {'ϵ': {5}},
     3: {'b': {4}},
-    4: {'eps': {5}},
+    4: {'ϵ': {5}},
     5: {}
 
 }
@@ -40,7 +41,7 @@ def construir_afd(afn, estado_inicial):
     # Marcar los estados finales del AFD
     estados_finales = set()
     for conjunto_estados in estados_afd:
-        if any(estado in conjunto_estados for estado in afn.get(estado_inicial, {}).get('eps', set())):
+        if any(estado in conjunto_estados for estado in afn.get(estado_inicial, {}).get('ϵ', set())):
             estados_finales.add(conjunto_estados)
     
     return afd, estados_finales
@@ -51,7 +52,7 @@ def epsilon_cierre(conjunto_estados, afn):
     pendientes = deque(resultado)
     while pendientes:
         estado_actual = pendientes.popleft()
-        for estado_transicion in afn.get(estado_actual, {}).get('eps', set()):
+        for estado_transicion in afn.get(estado_actual, {}).get('ϵ', set()):
             if estado_transicion not in resultado:
                 resultado.add(estado_transicion)
                 pendientes.append(estado_transicion)
@@ -62,21 +63,24 @@ def get_simbolos(afn):
     simbolos = set()
     for estado in afn:
         for simbolo in afn[estado]:
-            if simbolo != 'eps':
+            if simbolo != 'ϵ':
                 simbolos.add(simbolo)
     return simbolos
 
 # Construir el AFD y obtener los estados finales
 afd, estados_finales = construir_afd(afn, 0)
 
-# Imprimir el AFD resultante
-print("AFD resultante:")
+# Graficar el AFD resultante
+dot = Digraph(comment='AFD resultante')
+dot.attr(rankdir='LR')
 for estado, transiciones in afd.items():
-    estado_str = ", ".join(str(e) for e in estado)
-    print(f"Estado: {{{estado_str}}}")
-    for simbolo, siguiente_estado in transiciones.items():
-        siguiente_estado_str = ", ".join(str(e) for e in siguiente_estado)
-        print(f"\t{simbolo} -> {{{siguiente_estado_str}}}")
+    estado_str = ', '.join(str(e) for e in estado)
     if estado in estados_finales:
-        print("Es un estado final.")
-    print()
+        dot.node(estado_str, estado_str, shape='doublecircle')
+    else:
+        dot.node(estado_str, estado_str)
+    for simbolo, siguiente_estado in transiciones.items():
+        siguiente_estado_str = ', '.join(str(e) for e in siguiente_estado)
+        dot.edge(estado_str, siguiente_estado_str, label=simbolo)
+# dot.render('afd_resultante.gv', view=True)
+dot.render('AFDfinal', format='png')
