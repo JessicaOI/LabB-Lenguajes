@@ -1,6 +1,7 @@
 from collections import deque
 
 # Define el AFN
+#ejemplo a|b
 afn = {
     0: {'eps': {1,3}},
     1: {'a': {2}},
