@@ -2,15 +2,13 @@ from collections import deque
 
 # Define el AFN
 afn = {
-    0: {'a': {1}},
-    1: {'eps': {2, 4}},
-    2: {'b': {3}},
-    3: {'eps': {2, 4}},
-    4: {'a': {5}},
-    5: {'eps': {6, 8}},
-    6: {'b': {7}},
-    7: {'eps': {6, 8}},
-    8: {}
+    0: {'eps': {1,3}},
+    1: {'a': {2}},
+    2: {'eps': {5}},
+    3: {'b': {4}},
+    4: {'eps': {5}},
+    5: {}
+
 }
 
 # Definir la función que construye el AFD
