@@ -3,15 +3,58 @@ from collections import deque
 
 # Define el AFN
 #ejemplo a|b
-afn = {
-    0: {'ϵ': {1,3}},
-    1: {'a': {2}},
-    2: {'ϵ': {5}},
-    3: {'b': {4}},
-    4: {'ϵ': {5}},
-    5: {}
+# afn = {
+#     0: {'ϵ': {1,3}},
+#     1: {'a': {2}},
+#     2: {'ϵ': {5}},
+#     3: {'b': {4}},
+#     4: {'ϵ': {5}},
+#     5: {}
 
-}
+# }
+
+# afn_desc = [{'desde': 0, '=>': 'a', 'hacia': [1]},
+#             {'desde': 1, '=>': ' ', 'hacia': [2, 4]},
+#             {'desde': 2, '=>': 'b', 'hacia': [3]},
+#             {'desde': 3, '=>': ' ', 'hacia': [2, 4]},
+#             {'desde': 4, '=>': 'a', 'hacia': [5]},
+#             {'desde': 5, '=>': ' ', 'hacia': [6, 8]},
+#             {'desde': 6, '=>': 'b', 'hacia': [7]},
+#             {'desde': 7, '=>': ' ', 'hacia': [6, 8]}]
+
+with open('resultadoAFN.txt', 'r') as file:
+    content = file.read()
+    afn_desc = eval(content)
+
+
+def reescribir_afn(afn_desc):
+    afn = {}
+    for transicion in afn_desc:
+        origen = transicion['desde']
+        simbolo = transicion['=>']
+        destinos = transicion['hacia']
+        if origen not in afn:
+            afn[origen] = {}
+        if simbolo == " ":
+            simbolo = "ϵ"
+        if simbolo not in afn[origen]:
+            afn[origen][simbolo] = set()
+        for destino in destinos:
+            if destino not in afn:
+                afn[destino] = {}
+            if simbolo not in afn[destino]:
+                afn[destino][simbolo] = set()
+            afn[origen][simbolo].add(destino)
+    # Identificar nodos finales
+    for nodo in afn:
+        if not afn[nodo]:
+            afn[nodo] = None
+    return afn
+
+
+# afn = reescribir_afn(afn_desc)
+# print(afn)
+
 
 # Definir la función que construye el AFD
 def construir_afd(afn, estado_inicial):
@@ -68,7 +111,7 @@ def get_simbolos(afn):
     return simbolos
 
 # Construir el AFD y obtener los estados finales
-afd, estados_finales = construir_afd(afn, 0)
+afd, estados_finales = construir_afd(reescribir_afn(afn_desc), 0)
 
 # Graficar el AFD resultante
 dot = Digraph(comment='AFD resultante')
