@@ -342,21 +342,21 @@ def evaluatePostfix(regex):
 
     #print (afn)
     with open('resultadoAFN.txt', 'w') as f:
-        for state in afn.estados:
-            f.write(str(state)+", ")
-        f.write('\n')
+        # for state in afn.estados:
+        #     f.write(str(state)+", ")
+        # f.write('\n')
         #for loop language
-        lang = []
-        for i in range(0,len(afn.transiciones)):
-            lang.append(str(afn.transiciones[i]['=>']))
-        lang = set(lang)
-        f.write(str(lang))
-        print (lang)
-        f.write('\n')
-        f.write(str(afn.estadoInicial))
-        f.write('\n')
-        f.write(str(afn.estadoFinal))
-        f.write('\n')
+        # lang = []
+        # for i in range(0,len(afn.transiciones)):
+        #     lang.append(str(afn.transiciones[i]['=>']))
+        # lang = set(lang)
+        # f.write(str(lang))
+        # print (lang)
+        # f.write('\n')
+        # f.write(str(afn.estadoInicial))
+        # f.write('\n')
+        # f.write(str(afn.estadoFinal))
+        # f.write('\n')
         for transition in afn.transiciones:
             f.write(str(transition)+ ", ")
 
@@ -382,6 +382,7 @@ def ejecutar(regex):
 # INGRESANDO EXPRESION REGULAR A TRABAJAR
 
 result = ejecutar('ab*ab*')
+# result = ejecutar('a*b*c')
 # result = ejecutar('0?(1?)?0*')
 # result = ejecutar('+a')
 # result = ejecutar('a b')
