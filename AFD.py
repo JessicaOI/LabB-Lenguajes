@@ -1,5 +1,6 @@
 from graphviz import Digraph
 from collections import deque
+from graphviz import Source
 
 # Define el AFN
 #ejemplo a|b
@@ -127,3 +128,9 @@ for estado, transiciones in afd.items():
         dot.edge(estado_str, siguiente_estado_str, label=simbolo)
 # dot.render('afd_resultante.gv', view=True)
 dot.render('AFDfinal', format='png')
+# Exportar el AFD a un archivo de texto en formato DOT
+with open('AFDfinal.txt', 'w') as file:
+    file.write(dot.source)
+
+# Crear objeto Source a partir del archivo de texto en formato DOT
+src = Source.from_file('AFDfinal.txt')
