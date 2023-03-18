@@ -1,26 +1,39 @@
-from copy import deepcopy
 import time
+import graphviz
+from copy import deepcopy
+
 
 class RegexNode:
-
     # Funcion para obtener los valores dentro de los parentesis
     @staticmethod
     def recortar_corchetes(regex):
-        while regex[0] == '(' and regex[-1] == ')':
+        while regex[0] == "(" and regex[-1] == ")":
             regex = regex[1:-1]
         return regex
-    
+
     # Funcion que revisa el regex para ver si es concatenacion
     @staticmethod
     def concatenacion(c):
-        return c == '(' or RegexNode.es_letra(c)
-        
+        return c == "(" or (
+            RegexNode.es_letra(c)
+            and not RegexNode.es_mas(c)
+            and not RegexNode.es_signo_pregunta(c)
+        )
+
     # Funcion que revisa si es parte del alfabeto
     @staticmethod
     def es_letra(c):
-        return c in alfabeto
+        return c in alfabeto and c not in ("+", "?")
 
-    # Se inicializan los valores 
+    @staticmethod
+    def es_mas(c):
+        return c == "+"
+
+    @staticmethod
+    def es_signo_pregunta(c):
+        return c == "?"
+
+    # Se inicializan los valores
     def __init__(self, regex):
         self.nullable = None
         self.firstpos = []
@@ -28,12 +41,12 @@ class RegexNode:
         self.item = None
         self.position = None
         self.Hijos = []
-        
-        #Chquea si es una hoja
+
+        # Chquea si es una hoja
         if len(regex) == 1 and self.es_letra(regex):
-            #Si es una hoja
+            # Si es una hoja
             self.item = regex
-            #Chequa si contiene epsilon
+            # Chequa si contiene epsilon
             if usar_epsilon:
                 if self.item == epsilon:
                     self.nullable = True
@@ -42,177 +55,231 @@ class RegexNode:
             else:
                 self.nullable = False
             return
-        
-        #Si es un nodo interno
-        #Encontrar los operadores más a la izquierda en los tres operadores
+
+        # Si es un nodo interno
+        # Encontrar los operadores más a la izquierda en los tres operadores
 
         kleene = -1
         or_p = -1
         concatenation = -1
         i = 0
+        plus_op = -1
+        question_op = -1
 
-        #Obtener el resto de los terminos    
+        # Obtener el resto de los terminos
         while i < len(regex):
-            if regex[i] == '(':
-                #Bloque compuesto de parentsis
+            if regex[i] == "(":
+                # Bloque compuesto de parentsis
                 nivel_brackets = 1
-                #hace skip del termino
-                i+=1
+                # hace skip del termino
+                i += 1
                 while nivel_brackets != 0 and i < len(regex):
-                    if regex[i] == '(':
+                    if regex[i] == "(":
                         nivel_brackets += 1
-                    if regex[i] == ')':
+                    if regex[i] == ")":
                         nivel_brackets -= 1
-                    i+=1
+                    i += 1
             else:
-                #Pasa al siguiente caracter
-                i+=1
-            
-            #Se encuentra una concatenación en la iteración anterior y es el ultimo termino
+                # Pasa al siguiente caracter
+                i += 1
+
+            # Se encuentra una concatenación en la iteración anterior y es el ultimo termino
             if i == len(regex):
                 break
 
-            #Chquea si es una concatenacion
+            # Chquea si es una concatenacion
             if self.concatenacion(regex[i]):
                 if concatenation == -1:
                     concatenation = i
                 continue
-            #Chequea si es kleene
-            if regex[i] == '*':
+            # Check if it has a plus
+            if regex[i] == "+":
+                if plus_op == -1:
+                    plus_op = i
+            # Check if it has a question mark
+            if regex[i] == "?":
+                if question_op == -1:
+                    question_op = i
+            # Chequea si es kleene
+            if regex[i] == "*":
                 if kleene == -1:
                     kleene = i
                 continue
-            #Chequea si tiene un or
-            if regex[i] == '|':
+            # Chequea si tiene un or
+            if regex[i] == "|":
                 if or_p == -1:
                     or_p = i
-        
-        #Setea la opeacion por prioridad
+
+        # Setea la opeacion por prioridad
         if or_p != -1:
-            #Encuentra un or
-            self.item = '|'
+            # Encuentra un or
+            self.item = "|"
             self.Hijos.append(RegexNode(self.recortar_corchetes(regex[:or_p])))
-            self.Hijos.append(RegexNode(self.recortar_corchetes(regex[(or_p+1):])))
+            self.Hijos.append(RegexNode(self.recortar_corchetes(regex[(or_p + 1) :])))
         elif concatenation != -1:
-            #Encuentra una concatenacion
-            self.item = '.'
+            # Encuentra una concatenacion
+            self.item = "."
             self.Hijos.append(RegexNode(self.recortar_corchetes(regex[:concatenation])))
             self.Hijos.append(RegexNode(self.recortar_corchetes(regex[concatenation:])))
         elif kleene != -1:
-            #encuentra un kleene
-            self.item = '*'
+            # encuentra un kleene
+            self.item = "*"
             self.Hijos.append(RegexNode(self.recortar_corchetes(regex[:kleene])))
+        elif plus_op != -1:
+            self.item = "+"
+            sub_regex = self.recortar_corchetes(regex[:plus_op])
+            self.Hijos.append(RegexNode(sub_regex))
+            self.Hijos.append(RegexNode(sub_regex + "*"))
+        elif question_op != -1:
+            self.item = "?"
+            sub_regex = self.recortar_corchetes(regex[:question_op])
+            self.Hijos.append(RegexNode(sub_regex))
+            self.Hijos.append(RegexNode(epsilon))
 
     def calc_functions(self, pos, followpos):
-        #Es una hoja
+        # Es una hoja
         if self.es_letra(self.item):
             self.firstpos = [pos]
             self.lastpos = [pos]
             self.position = pos
-            #Agrega la posición en la lista de followpos
-            followpos.append([self.item,[]])
-            return pos+1
-        #Si es un nodo interno
+            # Agrega la posición en la lista de followpos
+            followpos.append([self.item, []])
+            return pos + 1
+        # Si es un nodo interno
         for Hijo in self.Hijos:
             pos = Hijo.calc_functions(pos, followpos)
-        #Calcula la expresion actual
+        # Calcula la expresion actual
 
-        if self.item == '.':
-            #Si es concatenacion
-            #Firstpos
+        if self.item == ".":
+            # Si es concatenacion
+            # Firstpos
             if self.Hijos[0].nullable:
-                self.firstpos = sorted(list(set(self.Hijos[0].firstpos + self.Hijos[1].firstpos)))
+                self.firstpos = sorted(
+                    list(set(self.Hijos[0].firstpos + self.Hijos[1].firstpos))
+                )
             else:
                 self.firstpos = deepcopy(self.Hijos[0].firstpos)
-            #Lastpos
+            # Lastpos
             if self.Hijos[1].nullable:
-                self.lastpos = sorted(list(set(self.Hijos[0].lastpos + self.Hijos[1].lastpos)))
+                self.lastpos = sorted(
+                    list(set(self.Hijos[0].lastpos + self.Hijos[1].lastpos))
+                )
             else:
                 self.lastpos = deepcopy(self.Hijos[1].lastpos)
-            #Nullable
+            # Nullable
             self.nullable = self.Hijos[0].nullable and self.Hijos[1].nullable
-            #Followpos
+            # Followpos
             for i in self.Hijos[0].lastpos:
                 for j in self.Hijos[1].firstpos:
                     if j not in followpos[i][1]:
                         followpos[i][1] = sorted(followpos[i][1] + [j])
 
-        elif self.item == '|':
-            #Si es un or
-            #Firstpos
-            self.firstpos = sorted(list(set(self.Hijos[0].firstpos + self.Hijos[1].firstpos)))
-            #Lastpos
-            self.lastpos = sorted(list(set(self.Hijos[0].lastpos + self.Hijos[1].lastpos)))
-            #Nullable
+        elif self.item == "|":
+            # Si es un or
+            # Firstpos
+            self.firstpos = sorted(
+                list(set(self.Hijos[0].firstpos + self.Hijos[1].firstpos))
+            )
+            # Lastpos
+            self.lastpos = sorted(
+                list(set(self.Hijos[0].lastpos + self.Hijos[1].lastpos))
+            )
+            # Nullable
             self.nullable = self.Hijos[0].nullable or self.Hijos[1].nullable
 
-        elif self.item == '*':
-            #Si es un kleene
-            #Firstpos
+        elif self.item == "*" or self.item == "+" or self.item == "?":
+            # Si es un kleene, plus or question mark
+            # Firstpos
             self.firstpos = deepcopy(self.Hijos[0].firstpos)
-            #Lastpos
+            # Lastpos
             self.lastpos = deepcopy(self.Hijos[0].lastpos)
-            #Nullable
-            self.nullable = True
-            #Followpos
-            for i in self.Hijos[0].lastpos:
-                for j in self.Hijos[0].firstpos:
-                    if j not in followpos[i][1]:
-                        followpos[i][1] = sorted(followpos[i][1] + [j])
+            # Nullable
+            self.nullable = self.item != "+"  # Only '+' operator is not nullable
+            # Followpos
+            if self.item == "*" or self.item == "+":
+                for i in self.Hijos[0].lastpos:
+                    for j in self.Hijos[0].firstpos:
+                        if j not in followpos[i][1]:
+                            followpos[i][1] = sorted(followpos[i][1] + [j])
 
-        #print('otro')
-        #print(pos)
+        # print('otro')
+        # print(pos)
         return pos
-    print(' ')
-    print('nivel--item--firstpos--lastpos--nullable--posicion')
+
+    print(" ")
+    print("nivel--item--firstpos--lastpos--nullable--posicion")
+
     def write_level(self, level):
-        
-        print(str(level) + ' ' + self.item, self.firstpos, self.lastpos, self.nullable, '' if self.position == None else self.position)
+
+        print(
+            str(level) + " " + self.item,
+            self.firstpos,
+            self.lastpos,
+            self.nullable,
+            "" if self.position == None else self.position,
+        )
         for Hijo in self.Hijos:
-            Hijo.write_level(level+1)
+            Hijo.write_level(level + 1)
+
+    # Add a new method to create a graph of the DFA
+    def graph_afd(afd):
+        dot = graphviz.Digraph(format="png")
+        dot.attr(rankdir="LR", size="8,5")
+        dot.attr("node", shape="doublecircle")
+
+        for final_state in afd.F:
+            dot.node(str(final_state))
+
+        dot.attr("node", shape="circle")
+
+        for i, state in enumerate(afd.d):
+            for letter, dest_state in state.items():
+                dot.edge(str(i), str(dest_state), label=letter)
+
+        dot.render("output_automaton", view=True)
+
 
 class RegexTree:
-
-    
     def __init__(self, regex):
         self.root = RegexNode(regex)
         self.followpos = []
         self.functions()
-    
+
     def write(self):
         self.root.write_level(0)
 
     def functions(self):
-        positions = self.root.calc_functions(0, self.followpos)   
-        #print(self.followpos)
-    
-    def toAFD(self):
+        positions = self.root.calc_functions(0, self.followpos)
+        # print(self.followpos)
 
+    def toAFD(self):
         def contains_hashtag(q):
             for i in q:
-                if self.followpos[i][0] == '#':
+                if self.followpos[i][0] == "#":
                     return True
             return False
 
-        M = [] # Estados marcados 
-        Q = [] # Lista de estados en el formulario de seguimiento (matriz de posiciones)
-        V = alfabeto - {'#', epsilon if usar_epsilon else ''} # Alfabeto del automata 
-        d = [] # Array que contiene las transiciones de AFD resultante
-        F = [] # Estado final 
+        M = []  # Estados marcados
+        Q = (
+            []
+        )  # Lista de estados en el formulario de seguimiento (matriz de posiciones)
+        V = alfabeto - {"#", epsilon if usar_epsilon else ""}  # Alfabeto del automata
+        d = []  # Array que contiene las transiciones de AFD resultante
+        F = []  # Estado final
         q0 = self.root.firstpos
 
         Q.append(q0)
         if contains_hashtag(q0):
             F.append(Q.index(q0))
-        
+
         while len(Q) - len(M) > 0:
-            #Mientras existan estados sin marcar
+            # Mientras existan estados sin marcar
             q = [i for i in Q if i not in M][0]
-            #Se genera el array para el nuevo estado
+            # Se genera el array para el nuevo estado
             d.append({})
-            #Se marca el estado
+            # Se marca el estado
             M.append(q)
-            #Para cada letra del alfabeto
+            # Para cada letra del alfabeto
             for a in V:
                 # Se calcula el estado destino ( d(q,a) = U )
                 U = []
@@ -220,24 +287,23 @@ class RegexTree:
                 for i in q:
                     # Si i tiene una etiqueta a
                     if self.followpos[i][0] == a:
-                        #Añadimos la posición a la composición de U
+                        # Añadimos la posición a la composición de U
                         U = U + self.followpos[i][1]
                 U = sorted(list(set(U)))
-                #Chequea si el estado es valido
+                # Chequea si el estado es valido
                 if len(U) == 0:
-                    #Sin posiciones no se genera un estado nuevo
+                    # Sin posiciones no se genera un estado nuevo
                     continue
                 if U not in Q:
                     Q.append(U)
                     if contains_hashtag(U):
                         F.append(Q.index(U))
                 d[Q.index(q)][a] = Q.index(U)
-        return AFD(Q,V,d,Q.index(q0),F)
+        return AFD(Q, V, d, Q.index(q0), F)
 
-        
+
 class AFD:
-
-    def __init__(self,Q,V,d,q0,F):
+    def __init__(self, Q, V, d, q0, F):
         self.Q = Q
         self.V = V
         self.d = d
@@ -248,70 +314,100 @@ class AFD:
         # Chequea si la entrada está en el alfabeto actual
         if len(set(cadena) - self.V) != 0:
             # No todos los caracteres están en el idioma.
-            print('caracteres erroneos',(set(cadena)-self.V),'caracteres no son parte del alfabeto')
+            print(
+                "caracteres erroneos",
+                (set(cadena) - self.V),
+                "caracteres no son parte del alfabeto",
+            )
             exit(0)
-        
-        #Correr el Automata 
+
+        # Correr el Automata
         q = self.q0
         for i in cadena:
-            #Chequea si existe la transicion
+            # Chequea si existe la transicion
             if q >= len(self.d):
-                print('No se acepta la cadena, No exsite la transicion')
+                print("No se acepta la cadena, No exsite la transicion")
                 exit(0)
             if i not in self.d[q].keys():
-                print('No se acepta la cadena, el estado no tiene transiciones con el carácter')
+                print(
+                    "No se acepta la cadena, el estado no tiene transiciones con el carácter"
+                )
                 exit(0)
-            #Se ejecuta la transicion
+            # Se ejecuta la transicion
             q = self.d[q][i]
-        
+
         if q in self.F:
-            print('Cadena es parte del automata')
+            print("Cadena es parte del automata")
         else:
-            print('No se acepta la cadena, termina en un estado no final')
+            print("No se acepta la cadena, termina en un estado no final")
 
     def write(self):
         for i in range(len(self.Q)):
             # imprime el index del Array que contiene las transiciones del AFD resultante
-            print(i,self.d[i])
+            print(i, self.d[i])
 
-#Prepara la expresion para ser evaluada
+    def graph_dfa(self, filename="output_automaton"):
+        dot = graphviz.Digraph(format="png")
+        dot.attr(rankdir="LR", size="8,5")
+        dot.attr("node", shape="doublecircle")
+
+        for final_state in self.F:
+            dot.node(str(final_state))
+
+        dot.attr("node", shape="circle")
+
+        for i, state in enumerate(self.d):
+            for letter, dest_state in state.items():
+                dot.edge(str(i), str(dest_state), label=letter)
+
+        dot.render(filename, view=True)
+
+
+# Prepara la expresion para ser evaluada
+# Funcion que prepara la expresion para ser evaluada
 def pre_proceso(regex):
-    regex = regex.replace(' ','')
-    regex = '(' + regex + ')' + '#'
+    regex = regex.replace(" ", "")
+    # regex = RegexNode.add_new_operations(regex)
+    regex = "(" + regex + ")" + "#"
     return regex
+
 
 # Funcion que regresa el alfabeto de la expresion
 def gen_alfabeto(regex):
-    return set(regex) - set('()|*')
+    return set(filter(lambda c: c not in "()|*+?", regex))
 
 
-#Valores iniciales
+# Valores iniciales
 usar_epsilon = True
-epsilon = 'ϵ'
+epsilon = "ϵ"
 alfabeto = None
 
-#Main
-regex = '(a|ϵ)b(a+)c?'
+# Main
+regex = "(a|ϵ)b(a+)c?"
+# regex = "(ϵ|b)c"
 
-#Procesa el Regex y genera el alfabeto del mismo   
+# Procesa el Regex y genera el alfabeto del mismo
 t0 = time.perf_counter()
 p_regex = pre_proceso(regex)
 alfabeto = gen_alfabeto(p_regex)
 
-#Construccion de regex a afd
+# Construccion de regex a afd
 tree = RegexTree(p_regex)
 tree.write()
 AFD = tree.toAFD()
 
-#Se simula la cadena predeterminada
-evaluar_cadena = 'babbaaaaa'
+# Visualize the resulting DFA
+AFD.graph_dfa("output_automaton")
+
+# Se simula la cadena predeterminada
+evaluar_cadena = "babbaaaaa"
 
 # prints finales para mostrar AFD resutante
-print('Regex: ' + regex)
-print('Alfabeto : ' + ''.join(sorted(alfabeto)))
-print('Automata AFD resultante: \n')
+print("Regex: " + regex)
+print("Alfabeto : " + "".join(sorted(alfabeto)))
+print("Automata AFD resultante: \n")
 AFD.write()
 t1 = time.perf_counter()
-print('\nEl tiempo para pasar de REGEX a AFD es: ',t1-t0)
-print('\nSimulacion sobre : "'+evaluar_cadena+'" : ')
+print("\nEl tiempo para pasar de REGEX a AFD es: ", t1 - t0)
+print('\nSimulacion sobre : "' + evaluar_cadena + '" : ')
 AFD.run(evaluar_cadena)
