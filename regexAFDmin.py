@@ -291,7 +291,7 @@ epsilon = 'ϵ'
 alfabeto = None
 
 #Main
-regex = '(b|b)*abb(a|b)*'
+regex = '(a|ϵ)b(a+)c?'
 
 #Procesa el Regex y genera el alfabeto del mismo   
 t0 = time.perf_counter()

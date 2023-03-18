@@ -2,27 +2,6 @@ from graphviz import Digraph
 from collections import deque
 from graphviz import Source
 
-# Define el AFN
-#ejemplo a|b
-# afn = {
-#     0: {'ϵ': {1,3}},
-#     1: {'a': {2}},
-#     2: {'ϵ': {5}},
-#     3: {'b': {4}},
-#     4: {'ϵ': {5}},
-#     5: {}
-
-# }
-
-# afn_desc = [{'desde': 0, '=>': 'a', 'hacia': [1]},
-#             {'desde': 1, '=>': ' ', 'hacia': [2, 4]},
-#             {'desde': 2, '=>': 'b', 'hacia': [3]},
-#             {'desde': 3, '=>': ' ', 'hacia': [2, 4]},
-#             {'desde': 4, '=>': 'a', 'hacia': [5]},
-#             {'desde': 5, '=>': ' ', 'hacia': [6, 8]},
-#             {'desde': 6, '=>': 'b', 'hacia': [7]},
-#             {'desde': 7, '=>': ' ', 'hacia': [6, 8]}]
-
 with open('resultadoAFN.txt', 'r') as file:
     content = file.read()
     afn_desc = eval(content)

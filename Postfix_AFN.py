@@ -381,7 +381,7 @@ def ejecutar(regex):
 
 # INGRESANDO EXPRESION REGULAR A TRABAJAR
 
-result = ejecutar('ab*ab*')
+result = ejecutar('(a|ϵ)b(a+)c?')
 # result = ejecutar('a*b*c')
 # result = ejecutar('0?(1?)?0*')
 # result = ejecutar('+a')
